@@ -3,116 +3,181 @@
 #Azdo PAT information https://learn.microsoft.com/en-us/azure/devops/organizations/accounts/use-personal-access-tokens-to-authenticate?view=azure-devops&tabs=Windows
 
 #--> Read input section
-$organization = Read-Host "Enter your name AzDo Organization"
-$projectName = Read-Host "Enter Azdo Project Name"
+$organization = (Read-Host "Enter your name AzDo Organization").ToLower()
+$projectName = (Read-Host "Enter Azdo Project Name").ToLower()
 $userMailPat = Read-Host "Enter azDo Email User"
 $pat = Read-Host "Enter your AzDo PAT" -AsSecureString
-$githubPat = Read-Host "Enter Github Global Client PAT token"
+$githubPat = Read-Host "Enter Github Global Client PAT token" -AsSecureString
 $repoNameOption = Read-Host "Enter DevSecOps Global repo name (enter for Default)" 
 
-#--> Vars
-if(!$repoNameOption){
-    $repoName = $projectName + "_devsecops_global_config"
-    Write-Host "Repo name by default is $repoName"
-}else{
-    $repoName = $repoNameOption + "_devsecops_global_config"
-    Write-Host "Repo name by default is $repoName"
+#--> Functions
+function getIndex {
+    param(
+        $value = "",
+        $valueToFind = ""
+    )
+
+    $value = $value.Replace('"',"").Replace(",","")
+    $getIndex = $value.IndexOf("$valueToFind") + 1
+    $lengthString = $value.length
+    $getEqualLastIndex = ($lengthString - $getIndex)
+    $extractValue = $value.Substring($getIndex, $getEqualLastIndex)
+        
+    return $extractValue
+}
+function replaceTokens {
+    param (
+        $jsonTemplate = ""
+    )
+    
+    foreach($value in $jsonTemplate){
+        $getIndexVariable = $value.IndexOf("$");
+        if ($value -match "$" -and $getIndexVariable -gt 0){
+    
+            $getVariable = getIndex -value $value -valueToFind "$"
+            $getValue = (Get-Variable $getVariable).Value
+            $jsonTemplate = $jsonTemplate.Replace("$" + $getVariable, $getValue)
+        }
+    }
+
+    return $jsonTemplate
 }
 
 #--> Security PAT
-$getPat = [System.Runtime.InteropServices.Marshal]::SecureStringToCoTaskMemUnicode($pat)
-$resultGetPat = [System.Runtime.InteropServices.Marshal]::PtrToStringUni($getPat)
+function getPat($pat){
+    $getPat = [System.Runtime.InteropServices.Marshal]::SecureStringToCoTaskMemUnicode($pat)
+    $resultGetPat = [System.Runtime.InteropServices.Marshal]::PtrToStringUni($getPat)
+
+    return $resultGetPat
+}
+
+#--> Successfully/Error message
+function messageOutput {
+    param (
+        [bool] $result,
+        [string] $service
+    )
+
+    if($result){
+        Write-Host "The $service was created successfully."
+    }else{
+        Write-Error "There was an error creating the $service - Check with the administrator."
+    }
+    
+}
+
+#--> Import body json template
+$getRepoTemplate = (Get-Content .\json_files\azdo_create_repository.json)
+$getVariableGroupTemplate = (Get-Content .\json_files\azdo_create_variable_group.json)
+$getGithubTemplate = (Get-Content .\json_files\azdo_create_github_endpoint.json)
+$getEndpointPermissionsTemplate = (Get-Content .\json_files\azdo_patch_endpoint_permission.json)
+$getPushRepoFilesArray = (Get-Content .\json_files\azdo_push_file_array.json)
+$getPushRepoFiles = (Get-Content .\json_files\azdo_push_files_repo.json)
+
+#--> Vars
+if(!$repoNameOption){
+    $repoName = "devsecops_global_config"
+    Write-Host "Repo name by default is $repoName"
+}else{
+    $repoName = $repoNameOption
+    Write-Host "Repo name by default is $repoName"
+}
 
 #--> Header vars
-$headerAuthorization = @{Authorization = 'Basic ' + [Convert]::ToBase64String([Text.Encoding]::ASCII.GetBytes(":$resultGetPat")) }
+$azdoPAT = getPat($pat)
+$githubPat = getPat($githubPat)
+$headerAuthorization = @{Authorization = 'Basic ' + [Convert]::ToBase64String([Text.Encoding]::ASCII.GetBytes(":$azdoPAT")) }
 
 #--> Uri vars
 $repoValidationUri = "https://dev.azure.com/$organization/$projectName/_apis/git/repositories?api-version=6.0"
 $getProjectUri = "https://dev.azure.com/$organization/_apis/projects?api-version=6.0"
 $createRepoUri = "https://dev.azure.com/$organization/$projectName/_apis/git/repositories?api-version=6.0"
 $createVariableGroupUri = "https://dev.azure.com/$organization/$projectName/_apis/distributedtask/variablegroups?api-version=5.1-preview.1"
+$createGithubServiceConnectionUri = "https://dev.azure.com/$organization/$projectName/_apis/serviceendpoint/endpoints?api-version=5.1-preview.2"
+$createBuildDefinition = "https://dev.azure.com/$organization/$projectName/_apis/build/definitions?api-version=7.1-preview.7"
 
 #--> Repo validation
-try
-{
-    #--> Validates if the repo global configuration exists
-    $getResult = Invoke-RestMethod -Uri $repoValidationUri -Headers $headerAuthorization
-    $getResult = $getResult.value.name
+#--> Validates if the repo global configuration exists
+$getResult = Invoke-RestMethod -Uri $repoValidationUri -Headers $headerAuthorization
+$getResult = $getResult.value.name
 
-    if($getResult -match $repoName){
-        Write-Error "The repo $repoName exists - please validate with the administrator"
-    }else{
-        Write-Host "Repo $repoName not exists continue..."
-        #--> Get Project ID
-        $getProjectResult = Invoke-RestMethod -Uri $getProjectUri -Headers $headerAuthorization
-        $projectId = ($getProjectResult.value | Where-Object -FilterScript { $_.name -eq "$projectName" }).id
+if($getResult -match $repoName){
+    Write-Error "The repo $repoName exists - please validate with the administrator"
+}else{
+    Write-Host "Repo $repoName not exists continue..."
+    #--> Get Project ID
+    $getProjectResult = Invoke-RestMethod -Uri $getProjectUri -Headers $headerAuthorization
+    $projectId = ($getProjectResult.value | Where-Object -FilterScript { $_.name -eq "$projectName" }).id
 
-        #--> Repo creation
-        $body = "{
-            `n  `"name`": `"$repoName`",
-            `n  `"project`": {
-            `n   `"id`": `"$projectId`"
-            `n  }
-            `n}"    
-        $createRepoResult = Invoke-RestMethod -Uri $createRepoUri -Headers $headerAuthorization -ContentType "application/json" -Method Post -Body $body
+    #--> Repo creation
+    $body = replaceTokens -jsonTemplate $getRepoTemplate
+    $createRepoResult = Invoke-RestMethod -Uri $createRepoUri -Headers $headerAuthorization -ContentType "application/json" -Method Post -Body $body
 
-        #--> Import DevSecOps Global Skeleton
-        #---> Repo Import Body creation
-        $body = "{
-            `n   `"parameters`": {
-            `n     `"gitSource`": {
-            `n       `"url`": `"https://github.com/sserje06/devsecops_global_configuration.git`"
+    #--> Push repo yaml master pipeline configuration
+    #--> Get files names and create the json that will be injected in the push to repo
+    $getYamlMasterFiles = (dir .\yml_files).Name
+    $joinedFiles=@()
+    $getContentClean=@()
+    forEach ($value in $getYamlMasterFiles){
+        $outputNameFile = $value
+        $getFileContent = (Get-Content .\yml_files\$outputNameFile)
+
+        #--> Add spaces \n for azure devops YML
+        foreach ($lines in $getFileContent){
+            $getContentClean += $lines + "\n"
+        }
+
+        $getFileContent = $getContentClean
+        $array = replaceTokens -jsonTemplate $getPushRepoFilesArray
+        $joinedFiles += $array + ","
+    }
+
+    #Remove last comma
+    $joinedFiles[$joinedFiles.Length-1] = $joinedFiles[$joinedFiles.Length-1].Remove(0,1)
+    #--> Generates the final json to be consumed by the api to upload the files to the repo.
+    $body = replaceTokens -jsonTemplate $getPushRepoFiles
+    $repositoryId = $createRepoResult.id
+    $pushMasterFilesUri = "https://dev.azure.com/$organization/$projectName/_apis/git/repositories/$repositoryId/pushes?api-version=7.0"
+    $pushMasterFiles.refUpdates.Count = Invoke-RestMethod -Uri $pushMasterFilesUri -Headers $headerAuthorization -ContentType "application/json" -Method Post -Body $body
+
+    if($pushMasterFiles.refUpdates.Count){
+        #--> Create Global Vars Variable Group
+        $body = replaceTokens -jsonTemplate $getVariableGroupTemplate
+        $createGlobalVarsVariableGroup = Invoke-RestMethod -Uri $createVariableGroupUri -Headers $headerAuthorization -ContentType "application/json" -Method Post -Body $body
+
+        If($createGlobalVarsVariableGroup){
+            #--> Output
+            messageOutput -result 1 -service "DevSecOps Global Vars"
+
+            #--> Create Github Service Connection
+            $body = replaceTokens -jsonTemplate $getGithubTemplate
+            $createGithubServiceConnectionResult = Invoke-RestMethod -Uri $createGithubServiceConnectionUri -Headers $headerAuthorization -ContentType "application/json" -Method Post -Body $body
+            $endpointId = $createGithubServiceConnectionResult.id
+            $endpointName = $createGithubServiceConnectionResult.name
+
+            if($endpointId){
+                #--> Output
+                messageOutput -result 1 -service "Github Service Connection"
+
+                #--> Grant service connection permission over the pipelines
+                $body = replaceTokens -jsonTemplate $getEndpointPermissionsTemplate
+                $patchEndpointPermissionsUri = "https://dev.azure.com/$organization/$projectName/_apis/pipelines/pipelinePermissions/endpoint/${endpointId}?api-version=5.1-preview.1"
+                $patchGithubEndpointPermissionsResult = Invoke-RestMethod -Uri $patchEndpointPermissionsUri -Headers $headerAuthorization -ContentType "application/json" -Method Patch -Body $body
+
+                if ($patchGithubEndpointPermissionsResult) {
+                    #--> Output
+                    messageOutput -result 1 -service "Grant Permission Github Service Connect"
+                }else{
+                    #--> Output
+                    messageOutput -result 0 -service "Grant Permission Github Service Connect"
                 }
-            `n   }
-            `n }"
-        $repositoryId = $createRepoResult.id
-        $importGitRepoUri = "https://dev.azure.com/$organization/$projectName/_apis/git/repositories/$repositoryId/importRequests?api-version=6.0-preview.1"
-        $importGitRepoResult = Invoke-RestMethod -Uri $importGitRepoUri -Headers $headerAuthorization -ContentType "application/json" -Method Post -Body $body
-
-        If($importGitRepoResult.status -eq "queued"){
-            Write-Host "The DevSecOps Global Skeleton was uploaded successfully."
+            }else{
+                #--> Output
+                messageOutput -result 0 -service "Github Service Connection"
+            }
         }else{
-            Write-Error "There was an error loading the DevSecOps Global Skeleton - Check with the administrator."
+            #--> Output
+            messageOutput -result 0 -service "DevSecOps Global Vars"
         }
     }
-    
-    #--> Create Global Vars Variable Group
-    $body = "{
-        `n    `"variables`": {
-        `n        `"glbAllowSourceBranchName`": {
-        `n            `"value`": `"main,develop,feature,bugfix,release`"
-        `n        },
-        `n        `"gblPAT`": {
-        `n            `"value`": `"$resultGetPat`",
-        `n            `"isSecret`": `"true`"
-        `n        },
-        `n        `"gblUserPAT`": {
-        `n            `"value`": `"$userMailPat`"
-        `n        },
-        `n        `"glbDevSecOpsRepoName`": {
-        `n            `"value`": `"devsecops_global_configuration`"
-        `n        },
-        `n        `"glbAzDoOrganizationName`": {
-        `n            `"value`": `"$organization`"
-        `n        },
-        `n        `"glbAzDoProjectName`": {
-        `n            `"value`": `"$projectName`"
-        `n        }
-        `n        },
-        `n        `"type`": `"Vsts`",
-        `n        `"name`": `"global_vars`",
-        `n        `"description`": `"DevSecOps Global Vars`"
-        `n}"
-    $createGlobalVarsVariableGroup = Invoke-RestMethod -Uri $createVariableGroupUri -Headers $headerAuthorization -ContentType "application/json" -Method Post -Body $body
-    
-    If($createGlobalVarsVariableGroup){
-        Write-Host "The DevSecOps Global Vars was created successfully."
-    }else{
-        Write-Error "There was an error creating the DevSecOps Global Vars - Check with the administrator."
-    }
-}   
-catch
-{
-    Write-Output "There was an error in the execution"
-    Write-Output $_
 }

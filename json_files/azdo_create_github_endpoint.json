@@ -1,0 +1,23 @@
+{
+    "data": {},
+    "name": "DevSecOpsGlobal-Github-Service-Connection",
+    "type": "github",
+    "url": "https://github.com",
+    "authorization": {
+      "parameters": {
+        "AccessToken": "$githubPat"
+      },
+      "scheme": "Token"
+    },
+    "isShared": false,
+    "isReady": true,
+    "serviceEndpointProjectReferences": [
+      {
+        "projectReference": {
+          "id": "$projectId",
+          "name": "$projectName"
+        },
+        "name": "DevSecOpsGlobal-Github-Service-Connection"
+      }
+    ]
+}

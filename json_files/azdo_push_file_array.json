@@ -1,0 +1,10 @@
+{
+    "changeType": "add",
+    "item": {
+      "path": "$outputNameFile"
+    },
+    "newContent": {
+      "content": "$getFileContent",
+      "contentType": "rawtext"
+    }
+}

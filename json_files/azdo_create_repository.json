@@ -1,0 +1,6 @@
+{
+    "name": "$repoName",
+    "project": {
+      "id": "$projectId"
+    }
+}

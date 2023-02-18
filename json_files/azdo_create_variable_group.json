@@ -1,0 +1,26 @@
+{
+    "variables": {
+            "glbAllowSourceBranchName": {
+                "value": "main,develop,feature,bugfix,release"
+            },
+            "gblPAT": {
+                "value": "$azdoPAT",
+                "isSecret": "true"
+            },
+            "gblUserPAT": {
+                "value": "$userMailPat"
+            },
+            "glbDevSecOpsRepoName": {
+                "value": "devsecops_global_configuration"
+            },
+            "glbAzDoOrganizationName": {
+                "value": "$organization"
+            },
+            "glbAzDoProjectName": {
+                "value": "$projectName"
+            }
+        },
+    "type": "Vsts",
+    "name": "global_vars",
+    "description": "DevSecOps Global Vars"
+}

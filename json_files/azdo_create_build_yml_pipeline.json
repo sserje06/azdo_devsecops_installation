@@ -1,0 +1,16 @@
+{
+    "name":  "My.New.Definition.Linked.To.Existing.YAML.File",
+    "project":  "$projectName",
+    "repository":  {
+                       "url":  "https://$organization@dev.azure.com/$organization/$projectName/_git/devsecops_global_config",
+                       "defaultBranch":  "refs/heads/main",
+                       "type":  "TfsGit",
+                       "id":  "$repositoryId"
+                   },
+    "process":  {
+                    "yamlFilename":  "master_api_gateway_template.yml",
+                    "type":  2
+                },
+    "path":  "\\CI_CD_MASTER",
+    "type":  "build"
+}

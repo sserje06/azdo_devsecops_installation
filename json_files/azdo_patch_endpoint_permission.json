@@ -1,0 +1,13 @@
+{
+    "resource": {
+        "id": "$endpointId",
+        "type": "endpoint",
+        "name": "$endpointName"
+    },
+    "pipelines": [],
+    "allPipelines": {
+        "authorized": true,
+        "authorizedBy": null,
+        "authorizedOn": null
+    }
+}

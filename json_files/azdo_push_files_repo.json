@@ -1,0 +1,16 @@
+{
+    "refUpdates": [
+      {
+        "name": "refs/heads/main",
+        "oldObjectId": "34cf7a361753e8a70042fd33aee66b180025a5a3"
+      }
+    ],
+    "commits": [
+      {
+        "comment": "Initial commit.",
+        "changes": [
+            $joinedFiles
+        ]
+      }
+    ]
+}
