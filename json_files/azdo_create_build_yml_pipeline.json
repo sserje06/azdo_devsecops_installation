@@ -1,16 +1,56 @@
 {
-    "name":  "My.New.Definition.Linked.To.Existing.YAML.File",
-    "project":  "$projectName",
+    "name":  "%pipelineName",
+    "project":  "%projectName",
+    "triggers": [
+            {
+                "branchFilters": [],
+                "pathFilters": [],
+                "settingsSourceType": 2,
+                "batchChanges": false,
+                "maxConcurrentBuildsPerBranch": 1,
+                "triggerType": "continuousIntegration"
+            }
+        ],
+    "variables": {
+        "pipEnvironment": {
+            "value": "dev,int,uat,prod",
+            "allowOverride": true
+        },
+        "pipRepoName": {
+            "value": "my_test_api",
+            "allowOverride": true
+        },
+        "pipApplicationName": {
+            "value": "my_test_api",
+            "allowOverride": true
+        },
+        "pipApplicationLanguageCode": {
+            "value": "C#",
+            "allowOverride": true
+        },
+        "pipApplicationDeployType": {
+            "value": "APP_SERVICE",
+            "allowOverride": true
+        },
+        "pipArtifactFeedName": {
+            "value": "none",
+            "allowOverride": true
+        },
+        "pipApplicationBuildPath": {
+            "value": "$(glbDevSecOpsRepoName)/",
+            "allowOverride": true
+        }
+    },
     "repository":  {
-                       "url":  "https://$organization@dev.azure.com/$organization/$projectName/_git/devsecops_global_config",
+                       "url":  "%repoUri",
                        "defaultBranch":  "refs/heads/main",
                        "type":  "TfsGit",
-                       "id":  "$repositoryId"
+                       "id":  "%repositoryId"
                    },
     "process":  {
-                    "yamlFilename":  "master_api_gateway_template.yml",
+                    "yamlFilename":  "%outputNameFile",
                     "type":  2
                 },
-    "path":  "\\CI_CD_MASTER",
+    "path":  "\\CI_CD_Master_Pipelines",
     "type":  "build"
 }

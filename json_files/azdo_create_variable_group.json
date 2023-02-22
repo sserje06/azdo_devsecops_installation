@@ -4,20 +4,20 @@
                 "value": "main,develop,feature,bugfix,release"
             },
             "gblPAT": {
-                "value": "$azdoPAT",
+                "value": "%azdoPAT",
                 "isSecret": "true"
             },
             "gblUserPAT": {
-                "value": "$userMailPat"
+                "value": "%userMailPat"
             },
             "glbDevSecOpsRepoName": {
-                "value": "devsecops_global_configuration"
+                "value": "devsecops_global_config"
             },
             "glbAzDoOrganizationName": {
-                "value": "$organization"
+                "value": "%organization"
             },
             "glbAzDoProjectName": {
-                "value": "$projectName"
+                "value": "%projectName"
             }
         },
     "type": "Vsts",

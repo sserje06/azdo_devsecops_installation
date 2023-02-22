@@ -47,29 +47,7 @@ parameters:
 variables:
   - group: global_vars
 
-  - name: varAzDoProjectName
-    value: $(pipAzDoProjectName)
-
-  - name: varEnvironment
-    value: $(pipEnvironment)
-
-  - name: varRepoName
-    value: $(pipRepoName)
-
-  - name: varApplicationName
-    value: $(pipApplicationName)
-
-  - name: varApplicationLanguageCode
-    value: $(pipApplicationLanguageCode)
-
-  - name: varApplicationDeployType
-    value: $(pipApplicationDeployType)
-
-  - name: varArtifactFeedName
-    value: $(pipArtifactFeedName)
-
-  - name: varApplicationBuildPath
-    value: $(pipApplicationBuildPath)
+  - template: variables/pipeline_variables.yml
 
   - name: varSourceCleanBranchName
     ${{ if eq(parameters.paramApplicationName, 'none') }}:
@@ -89,4 +67,4 @@ variables:
 #--> Stages
 #---> Info: stages by default are: dev (developer test), int (qa integration test), uat(staging user/client test), prod (production)
 stages:
-- template: application_stages.yml@devsecops-global
+- template: stages/application_stages.yml@devsecops-global

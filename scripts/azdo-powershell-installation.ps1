@@ -31,12 +31,12 @@ function replaceTokens {
     )
     
     foreach($value in $jsonTemplate){
-        $getIndexVariable = $value.IndexOf("$");
-        if ($value -match "$" -and $getIndexVariable -gt 0){
+        $getIndexVariable = $value.IndexOf("%");
+        if ($value -match "%" -and $getIndexVariable -gt 0){
     
-            $getVariable = getIndex -value $value -valueToFind "$"
+            $getVariable = getIndex -value $value -valueToFind "%"
             $getValue = (Get-Variable $getVariable).Value
-            $jsonTemplate = $jsonTemplate.Replace("$" + $getVariable, $getValue)
+            $jsonTemplate = $jsonTemplate.Replace("%" + $getVariable, $getValue)
         }
     }
 
@@ -73,6 +73,7 @@ $getGithubTemplate = (Get-Content .\json_files\azdo_create_github_endpoint.json)
 $getEndpointPermissionsTemplate = (Get-Content .\json_files\azdo_patch_endpoint_permission.json)
 $getPushRepoFilesArray = (Get-Content .\json_files\azdo_push_file_array.json)
 $getPushRepoFiles = (Get-Content .\json_files\azdo_push_files_repo.json)
+$getCreateBuildPipeline = (Get-Content .\json_files\azdo_create_build_yml_pipeline.json)
 
 #--> Vars
 if(!$repoNameOption){
@@ -94,7 +95,8 @@ $getProjectUri = "https://dev.azure.com/$organization/_apis/projects?api-version
 $createRepoUri = "https://dev.azure.com/$organization/$projectName/_apis/git/repositories?api-version=6.0"
 $createVariableGroupUri = "https://dev.azure.com/$organization/$projectName/_apis/distributedtask/variablegroups?api-version=5.1-preview.1"
 $createGithubServiceConnectionUri = "https://dev.azure.com/$organization/$projectName/_apis/serviceendpoint/endpoints?api-version=5.1-preview.2"
-$createBuildDefinition = "https://dev.azure.com/$organization/$projectName/_apis/build/definitions?api-version=7.1-preview.7"
+$createBuildDefinitionUri = "https://dev.azure.com/$organization/$projectName/_apis/build/definitions?api-version=7.1-preview.7"
+$repoUri = "https://$organization@dev.azure.com/$organization/$projectName/_git/$repoName"
 
 #--> Repo validation
 #--> Validates if the repo global configuration exists
@@ -119,26 +121,38 @@ if($getResult -match $repoName){
     $joinedFiles=@()
     $getContentClean=@()
     forEach ($value in $getYamlMasterFiles){
+        
+        #--> Generate the file name
         $outputNameFile = $value
-        $getFileContent = (Get-Content .\yml_files\$outputNameFile)
 
-        #--> Add spaces \n for azure devops YML
+        #--> Get the file content
+        $getFileContent = (Get-Content .\yml_files\$outputNameFile)
+        
+        #--> Add spaces \n for azure devops YML blank space into the file content
         foreach ($lines in $getFileContent){
             $getContentClean += $lines + "\n"
         }
 
+        #--> Change path of the pipeline variables template
+        if($value -eq "pipeline_variables.yml"){$outputNameFile = "/variables/" + $value}
+
+        #--> Generate the file content
         $getFileContent = $getContentClean
+        $getContentClean=@()
+
+        #Concatenate the files to push
         $array = replaceTokens -jsonTemplate $getPushRepoFilesArray
         $joinedFiles += $array + ","
     }
 
     #Remove last comma
     $joinedFiles[$joinedFiles.Length-1] = $joinedFiles[$joinedFiles.Length-1].Remove(0,1)
+
     #--> Generates the final json to be consumed by the api to upload the files to the repo.
     $body = replaceTokens -jsonTemplate $getPushRepoFiles
     $repositoryId = $createRepoResult.id
     $pushMasterFilesUri = "https://dev.azure.com/$organization/$projectName/_apis/git/repositories/$repositoryId/pushes?api-version=7.0"
-    $pushMasterFiles.refUpdates.Count = Invoke-RestMethod -Uri $pushMasterFilesUri -Headers $headerAuthorization -ContentType "application/json" -Method Post -Body $body
+    $pushMasterFiles = Invoke-RestMethod -Uri $pushMasterFilesUri -Headers $headerAuthorization -ContentType "application/json" -Method Post -Body $body
 
     if($pushMasterFiles.refUpdates.Count){
         #--> Create Global Vars Variable Group
@@ -167,6 +181,23 @@ if($getResult -match $repoName){
                 if ($patchGithubEndpointPermissionsResult) {
                     #--> Output
                     messageOutput -result 1 -service "Grant Permission Github Service Connect"
+
+                    #--> Build pipeline creation
+                    foreach($value in $getYamlMasterFiles){
+                        #--> Generate the file name
+                        if($value -match "master"){
+                            $outputNameFile = $value
+                            $pipelineName = "CI_CD_Master_" + $value.Replace("master_","").Replace("_template.yml","")
+                            $body = replaceTokens -jsonTemplate $getCreateBuildPipeline
+                            $createBuildPipelineResult = Invoke-RestMethod -Uri $createBuildDefinitionUri -Headers $headerAuthorization -ContentType "application/json" -Method Post -Body $body
+                            
+                            if($createBuildPipelineResult){
+                                messageOutput -result 1 -service "The pipeline CI-CD $outputNameFile"
+                            }else{
+                                messageOutput -result 0 -service "The pipeline CI-CD $outputNameFile"
+                            }
+                        }
+                    }
                 }else{
                     #--> Output
                     messageOutput -result 0 -service "Grant Permission Github Service Connect"

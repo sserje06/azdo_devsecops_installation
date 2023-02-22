@@ -1,8 +1,8 @@
 {
     "resource": {
-        "id": "$endpointId",
+        "id": "%endpointId",
         "type": "endpoint",
-        "name": "$endpointName"
+        "name": "%endpointName"
     },
     "pipelines": [],
     "allPipelines": {
