@@ -192,9 +192,9 @@ if($getResult -match $repoName){
                             $createBuildPipelineResult = Invoke-RestMethod -Uri $createBuildDefinitionUri -Headers $headerAuthorization -ContentType "application/json" -Method Post -Body $body
                             
                             if($createBuildPipelineResult){
-                                messageOutput -result 1 -service "The pipeline CI-CD $outputNameFile"
+                                messageOutput -result 1 -service "pipeline CI-CD $outputNameFile"
                             }else{
-                                messageOutput -result 0 -service "The pipeline CI-CD $outputNameFile"
+                                messageOutput -result 0 -service "pipeline CI-CD $outputNameFile"
                             }
                         }
                     }
