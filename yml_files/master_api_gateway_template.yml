@@ -1,70 +1,77 @@
 #--> Trigger Master Pipeline
-trigger:
-- none
+ trigger:
+ - none
+ 
+ #--> Trigger and resources
+ resources:
+  repositories:
+   - repository: devsecops-global
+     type: github
+     endpoint: DevSecOpsGlobal-Github-Service-Connection
+     name: sserje06/devsecops_global_configuration
+     ref: feature/implementation
+ 
+   - repository: repo_test
+     type: git
+     name: DevSecOpsGlobal/my_test_api
+     trigger:
+       branches:
+         include:
+           - refs/heads/main
+ name: $(date:yyyyMMdd)$(rev:.r)
+ 
+ #--> Input Parameters
+ #---> Info: For manual deployments
+ parameters:
+   - name: paramApplicationName
+     displayName: Application Name
+     type: string
+     default: none
+     values:
+     - api-test
+     - none
+ 
+   - name: paramBranchName
+     displayName: Default Branch Name
+     default: main
+ 
+   - name: paramDefaultBranchDeploy
+     displayName: CD - Default Branch
+     type: string
+     default: release
+     values:
+     - release
+     - main
+ 
+ #--> Global vars
+ variables:
+   - group: global_vars
 
-#--> Trigger and resources
-resources:
- repositories:
-  - repository: devsecops-global
-    type: github
-    endpoint: DevSecOpsGlobal-Github-Service-Connection
-    name: sserje06/devsecops_global_configuration
-    ref: feature/implementation
+   - name: varApplicationLanguageCode
+     value: dotnet
 
-  - repository: repo_test
-    type: git
-    name: DevSecOpsGlobal/my_test_api
-    trigger:
-      branches:
-        include:
-          - refs/heads/develop
-name: $(date:yyyyMMdd)$(rev:.r)
-
-#--> Input Parameters
-#---> Info: For manual deployments
-parameters:
-  - name: paramApplicationName
-    displayName: Application Name
-    type: string
-    default: none
-    values:
-    - api-test
-    - none
-
-  - name: paramBranchName
-    displayName: Default Branch Name
-    default: develop
-
-  - name: paramDefaultBranchDeploy
-    displayName: CD - Default Branch
-    type: string
-    default: release
-    values:
-    - release
-    - main
-
-#--> Global vars
-variables:
-  - group: global_vars
-
-  - template: variables/pipeline_variables.yml
-
-  - name: varSourceCleanBranchName
-    ${{ if eq(parameters.paramApplicationName, 'none') }}:
-      value: $[replace('$(Build.SourceBranch)', 'refs/heads/', '')]
-    ${{ else }}:
-      value: '${{ parameters.paramBranchName }}'
-
-  - name: varSourceBranchName
-    ${{ if eq(parameters.paramApplicationName, 'none') }}:
-      value: $(Build.SourceBranch)
-    ${{ else }}:
-      value: 'refs/heads/${{ parameters.paramBranchName }}'
-
-  - name: varDefaultBranchDeploy
-    value: ${{ parameters.paramDefaultBranchDeploy }}
-
-#--> Stages
-#---> Info: stages by default are: dev (developer test), int (qa integration test), uat(staging user/client test), prod (production)
-stages:
-- template: stages/application_stages.yml@devsecops-global
+   - name: varApplicationName
+     value: my_test_api
+ 
+   - name: varSourceCleanBranchName
+     ${{ if eq(parameters.paramApplicationName, 'none') }}:
+       value: $[replace('$(Build.SourceBranch)', 'refs/heads/', '')]
+     ${{ else }}:
+       value: '${{ parameters.paramBranchName }}'
+ 
+   - name: varSourceBranchName
+     ${{ if eq(parameters.paramApplicationName, 'none') }}:
+       value: $(Build.SourceBranch)
+     ${{ else }}:
+       value: 'refs/heads/${{ parameters.paramBranchName }}'
+ 
+   - name: varDefaultBranchDeploy
+     value: ${{ parameters.paramDefaultBranchDeploy }}
+ 
+ #--> Stages
+ #---> Info: stages by default are: dev (developer test), int (qa integration test), uat(staging user/client test), prod (production)
+ stages:
+  - template: stages/application_stages.yml@devsecops-global
+    parameters:
+      masterParamLanguageCode: ${{ variables.varApplicationLanguageCode }}
+      masterParamApplicationName: ${{ variables.varApplicationName }}
