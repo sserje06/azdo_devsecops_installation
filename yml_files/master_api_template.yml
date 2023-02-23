@@ -47,7 +47,11 @@ parameters:
 variables:
   - group: global_vars
 
-  - template: variables/pipeline_variables.yml
+  - name: varApplicationLanguageCode
+    value: dotnet
+
+  - name: varApplicationName
+    value: my_test_api
 
   - name: varSourceCleanBranchName
     ${{ if eq(parameters.paramApplicationName, 'none') }}:
